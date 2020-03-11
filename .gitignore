@@ -138,3 +138,5 @@ dmypy.json
 *.jpg
 *.exe
 *.ilk
+*.idb
+*.pdb
