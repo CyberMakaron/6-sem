@@ -39,7 +39,7 @@ int SendMessage( SOCKET sock, sockaddr_ipx destaddr, char *message, u_long msg_s
 }
 
 // прием сообщения
-int RecvMessage( SOCKET sock, unsigned short RecvSock, sockaddr_ipx srcaddr, char *message, u_long msg_size )
+int RecvMessage( SOCKET sock, sockaddr_ipx srcaddr, char *message, u_long msg_size )
 {
 	//// результат (предварительно ошибка)
 	//int res = 0x00;
@@ -60,7 +60,7 @@ int RecvMessage( SOCKET sock, unsigned short RecvSock, sockaddr_ipx srcaddr, cha
 
 	size = sizeof( sockaddr_ipx );
 	return recvfrom( 
-			sock,		// Сокер
+			sock,		// Сокет
 			message,	// Буфер сообщения
 			msg_size,	// Размер буфера
 			0,			// Флаги
@@ -97,17 +97,4 @@ SOCKET CreateIPXSocket( unsigned short socket_num, SOCKADDR_IPX *address )
 SOCKET CreateSPXSocket( unsigned short socket_num, SOCKADDR_IPX *address )
 {
 	return CreateSocket(socket_num, address, SOCK_SEQPACKET, NSPROTO_SPX);
-}
-
-// Человекочитаемый адрес
-void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
-	int i;
-	for (i=0; i < 4 ;i++){
-		printf("%02X", (UCHAR)lpsNetnum[i]);
-	}
-	printf(".");
-	for (i=0; i < 6 ;i++){
-		printf("%02X", (UCHAR) lpsNodenum[i]);
-	}
-	printf("\n");
 }

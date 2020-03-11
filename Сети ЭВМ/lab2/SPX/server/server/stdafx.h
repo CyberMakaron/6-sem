@@ -7,15 +7,16 @@
 
 #include "targetver.h"
 
-#include <winsock.h>  // прототипы функции библиотеки
-#include <wsipx.h>    // IPX/SPX структуры
-#include <wsnwlink.h> // IPX/SPX структуры и константы для NT платформ
-
+#include <iostream>
 #include <stdio.h>
-#include <tchar.h>
-#include <conio.h>
-#include <stdlib.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <wsipx.h>
+#include <string>
 
-#pragma comment( lib, "Ws2_32.lib" )
+// VS-specific
+#pragma comment(lib, "ws2_32.lib")
 
 // TODO: Установите здесь ссылки на дополнительные заголовки, требующиеся для программы

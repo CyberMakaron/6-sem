@@ -1,83 +1,188 @@
-// server.cpp: определяет точку входа для консольного приложения.
-//
-// Подключаем заголовочные файлы
+// VS-specific
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "stdafx.h"
-#include "utils.h"
 
+using namespace std;
 
-// Настройки
-int server_sock_num = 0x4444;
-
-// текущая директория
-LPSTR CurrentDir = NULL;
-
-int _tmain(int argc, _TCHAR* argv[]){
-
-	// переменная сокета
-	SOCKET	server_socket = NULL;
-	// переменная адреса
-	SOCKADDR_IPX address = { 0 };
-	// размер приемно-передающего буфера
-	char *buff = new char[1025];
-	// его очистка
-	memset( buff, 0, 1024 );
-	// текущая директория
-	CurrentDir = new char[256];
-	// очищаем его ...
-	memset( CurrentDir, 0, 255 );
-	// получаем текущую директорию
-	GetCurrentDirectoryA( 255, &CurrentDir[0] );
-
-	// Инициализация библиотеки Winsock
-	WSADATA wsad;
-	
-	if ( WSALibInit(&wsad) )	{
-		// Напечатаем информацию про библиотеку
-		printf( "%s is %s.\n", wsad.szDescription, wsad.szSystemStatus );
-		
-		server_socket = CreateIPXSocket(server_sock_num, &address);
-		// проверяем все ли нормально
-		if ( server_socket == INVALID_SOCKET ){
-			printf("Can't open socket %i, error %li\n", server_sock_num, WSAGetLastError());
-		}
-
-		printf("Address of server:\n");
-		PrintIpxAddress(address.sa_netnum, address.sa_nodenum);
-
-		while( true ){
-			// клавиша ESC нажата ? - да, выход из программы
-			if ( kbhit() && getch() == 0x1B ) break;
-
-			// читаем из сокета
-			int size = RecvMessage( server_socket, 0x5648, address,  buff, 1024 );
-			// что-то пришло ?
-			if ( size != SOCKET_ERROR && size != 0 )
-			{
-				// пришло сообщение размера size
-				buff[size] = '\0';
-				// корректировка данных
-				printf( "%s\r\n", buff );
-				// посылаем в сокет
-			}
-			// для исключеиня загрузки процессора ...
-			Sleep( 1 );
-		}
-		// закрывает сокет
-		closesocket( server_socket );
-		// не забываем сообщить системе, что мы закончили работу с winsock.dll
-		WSACleanup( ); 
+int initWSA() {
+	WORD wVersionRequested;
+	WSADATA wsaData;
+	int err;
+	wVersionRequested = MAKEWORD(2, 2);
+	err = WSAStartup(wVersionRequested, &wsaData);
+	if (err != 0) {
+		cout << "WSAStartup failed with error: " << err << endl;
+		cout << WSAGetLastError() << endl;
+		return 1;
 	}
-	else{
-		printf("Can't init WinSock lib!\n");
-	}
-	// очищаем все буферы
-	delete [] CurrentDir;
-	CurrentDir = NULL;
-	delete [] buff;
-	buff = NULL;
-	// ждем нажатия клавиши ...
-	_getch();
-	// все !
 	return 0;
 }
 
+int closeWSA() {
+	int err;
+	err = WSACleanup();
+	if (err != 0) {
+		cout << "WSACleanup failed with error: " << err << endl;
+		cout << WSAGetLastError() << endl;
+		return 1;
+	}
+	return 0;
+}
+
+// Человекочитаемый адрес
+void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
+	int i;
+	for (i=0; i < 4 ;i++){
+		printf("%02X", (UCHAR)lpsNetnum[i]);
+	}
+	printf(".");
+	for (i=0; i < 6 ;i++){
+		printf("%02X", (UCHAR) lpsNodenum[i]);
+	}
+	printf("\n");
+}
+
+long int get_file_size(FILE* f) {
+	long int size;
+	fseek(f, 0, SEEK_END);
+	size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	return size;
+};
+
+struct first_packet {
+	unsigned file_sz;
+	unsigned max_buf_sz;
+	unsigned full_packet_num;
+	unsigned last_packet_size;
+};
+
+void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
+	unsigned f_sz = get_file_size(f);
+	unsigned optlen = sizeof(unsigned);
+	unsigned optval;
+	getsockopt(s, SOL_SOCKET, SO_MAX_MSG_SIZE, (char*)& optval, (int*)&optlen);
+	// Размер буфера для отправки
+	unsigned buf_sz = optval;
+	unsigned full_packet_num = f_sz / buf_sz;
+	unsigned last_packet_sz = f_sz % buf_sz;
+	// Общее количество пакетов
+	unsigned packet_num = full_packet_num + (last_packet_sz != 0 ? 1 : 0);
+	cout << "File size: " << f_sz << " bytes" << endl;
+	cout << "Max data size in packet: " << buf_sz << " bytes" << endl;
+	cout << "Will be sent: " << full_packet_num << " full packets";
+	if (last_packet_sz != 0)
+		cout << " and 1 incomplete packet of " << last_packet_sz << " bytes";
+	cout << endl;
+
+	first_packet fp;
+	fp.file_sz = f_sz;
+	fp.max_buf_sz = buf_sz;
+	fp.full_packet_num = full_packet_num;
+	fp.last_packet_size = last_packet_sz;
+	// 0-й пакет с размером файла, максимальным размером пакета и количеством пакетов
+	sendto(s, (char*)& fp, sizeof(fp), 0, saddr, sizeof(SOCKADDR_IPX));
+	// даём клиентам время на подгготовку к приёму и подготавливаем буфер
+	char** buf;
+	buf = new char*[packet_num];
+    for (int i = 0; i < packet_num; i++)
+        buf[i] = new char[buf_sz];
+	for (int i = 0; i < full_packet_num; i ++)
+        fread(buf[i], buf_sz, 1, f);
+    if (last_packet_sz > 0)
+        fread(buf[full_packet_num], last_packet_sz, 1, f);
+	Sleep(10);
+	// отправляем файл
+	float progress_step = 70.0 / packet_num;
+	float step_count = 0;
+	for (int i = 0; i < full_packet_num ; i ++) {
+        sendto(s, buf[i], buf_sz, 0, saddr, sizeof(SOCKADDR_IPX));
+        step_count += progress_step;
+        while(step_count > 1){
+            cout << char(219);
+            step_count--;
+        }
+		//Sleep(1);
+		int x = 1000;
+		while(x--); // задержка меньше 1 мс
+	}
+	if (last_packet_sz != 0){
+		sendto(s, buf[full_packet_num], last_packet_sz, 0, saddr, sizeof(SOCKADDR_IPX));
+		step_count += progress_step;
+        while(step_count > 1){
+            cout << char(219);
+            step_count--;
+        }
+	}
+	cout << endl;
+    for (int i = 0; i < packet_num; i++)
+        delete buf[i];
+    delete buf;
+}
+
+
+int main() {
+	int err;
+	if (initWSA())
+		return 1;
+	SOCKET s;
+	unsigned short socketID_svr = 0x4444, socketID_clt = 0x4445;
+	s = socket(AF_IPX, SOCK_DGRAM, NSPROTO_IPX);
+	if (s == INVALID_SOCKET) {
+		cout << "Socket creation failed with error: " << WSAGetLastError() << endl;
+		if (closeWSA())
+			return 12;
+		return 2;
+	}
+	SOCKADDR_IPX srv_adr, clt_adr;
+	srv_adr.sa_family = AF_IPX;
+	srv_adr.sa_socket = htons(socketID_svr);
+	if (bind(s, (sockaddr*)& srv_adr, sizeof(SOCKADDR_IPX)) == SOCKET_ERROR){
+		printf("Bind error %X\n", WSAGetLastError());
+		return 10;
+	}
+	// Получаем адрес, присвоенный функцией bind
+	int sz = sizeof(SOCKADDR_IPX);
+	getsockname(s, (sockaddr*)& srv_adr, &sz);
+	clt_adr.sa_family = AF_IPX;
+	clt_adr.sa_socket = htons(socketID_clt);
+	memset(clt_adr.sa_netnum, 0, 4);		// локальная сеть
+	memset(clt_adr.sa_nodenum, 0xFF, 6);	// всем узлам сети
+	printf("Server address: \n");
+	PrintIpxAddress(srv_adr.sa_netnum, srv_adr.sa_nodenum);
+	printf("Socket: %X\n", srv_adr.sa_socket);
+	printf("Client address: \n");
+	PrintIpxAddress(clt_adr.sa_netnum, clt_adr.sa_nodenum);
+	printf("Socket: %X\n", clt_adr.sa_socket);
+	// устанавливаем флаг для посылки широковещательных пакетов
+	int set_broadcast = 1;
+	setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char*)& set_broadcast, sizeof(set_broadcast));
+
+	string f_name;
+	f_name = "test_img.jpg";
+	FILE *f_in = fopen(f_name.c_str(), "rb");
+	if (f_in == NULL) {
+		cout << "Unable to open file \"" << f_name << "\"" << endl;
+		return 3;
+	}
+
+	cout << "Press any key to start transmission" << endl;
+	getchar();
+	sendFile(s, (sockaddr*)& clt_adr, f_in);	// отправка файла
+	fclose(f_in);
+
+	err = closesocket(s);
+	if (err == SOCKET_ERROR) {
+		cout << "Socket closure failed with error: " << WSAGetLastError() << endl;
+		if (closeWSA())
+			return 12;
+		return 2;
+	}
+
+	if (closeWSA())
+		return 1;
+	cout << "Translation complete";
+	getchar();
+	return 0;
+}
