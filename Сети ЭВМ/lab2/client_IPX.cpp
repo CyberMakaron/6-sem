@@ -58,7 +58,7 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 	int full_packet_num, last_packet_sz, packet_num;
 	first_packet fp;
     char tmp;
-	// пиём 0-го пакета
+	// ГЇГЁВёГ¬ 0-ГЈГ® ГЇГ ГЄГҐГІГ 
 	int sz = sizeof(SOCKADDR_IPX);
 	recvfrom(s, (char*) &fp, sizeof(fp), 0, saddr, &sz);
 	recvfrom(s, &tmp, 1, 0, saddr, &sz);
@@ -74,12 +74,12 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 		cout << " and 1 incomplete packet of " << last_packet_sz << " bytes";
 	cout << endl;
 
-	//подготовка к приёму файла
+	//ГЇГ®Г¤ГЈГ®ГІГ®ГўГЄГ  ГЄ ГЇГ°ГЁВёГ¬Гі ГґГ Г©Г«Г 
 	char** buf;
 	buf = new char*[packet_num];
 	for (int i = 0; i < packet_num; i++)
         buf[i] = new char[buf_sz];
-	// приём файла
+	// ГЇГ°ГЁВёГ¬ ГґГ Г©Г«Г 
 	float progress_step = 70.0 / packet_num;
 	float step_count = 0;
 	for (int i = 0; i < full_packet_num; i++){
@@ -133,8 +133,8 @@ int main() {
 	bind(s, (sockaddr*)& clt_adr, sizeof(SOCKADDR_IPX));
 	svr_adr.sa_family = AF_IPX;
 	svr_adr.sa_socket = htons(socketID_svr);
-	memset(svr_adr.sa_netnum, 0, 4);		// локальная сеть
-	memset(svr_adr.sa_nodenum, 0xFF, 6);	// всем узлам сети
+	memset(svr_adr.sa_netnum, 0, 4);		// Г«Г®ГЄГ Г«ГјГ­Г Гї Г±ГҐГІГј
+	memset(svr_adr.sa_nodenum, 0xFF, 6);	// ГўГ±ГҐГ¬ ГіГ§Г«Г Г¬ Г±ГҐГІГЁ
 
 	string f_name;
 	f_name = "test_img_in.jpg";
