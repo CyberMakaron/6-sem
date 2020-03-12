@@ -74,9 +74,9 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
 	fp.max_buf_sz = buf_sz;
 	fp.full_packet_num = full_packet_num;
 	fp.last_packet_size = last_packet_sz;
-	// 0-й пакет с размером файла, максимальным размером пакета и количеством пакетов
+	// 0-Г© ГЇГ ГЄГҐГІ Г± Г°Г Г§Г¬ГҐГ°Г®Г¬ ГґГ Г©Г«Г , Г¬Г ГЄГ±ГЁГ¬Г Г«ГјГ­Г»Г¬ Г°Г Г§Г¬ГҐГ°Г®Г¬ ГЇГ ГЄГҐГІГ  ГЁ ГЄГ®Г«ГЁГ·ГҐГ±ГІГўГ®Г¬ ГЇГ ГЄГҐГІГ®Гў
 	sendto(s, (char*)& fp, sizeof(fp), 0, saddr, sizeof(SOCKADDR_IPX));
-	// даём клиентам время на подгготовку к приёму и подготавливаем буфер
+	// Г¤Г ВёГ¬ ГЄГ«ГЁГҐГ­ГІГ Г¬ ГўГ°ГҐГ¬Гї Г­Г  ГЇГ®Г¤ГЈГЈГ®ГІГ®ГўГЄГі ГЄ ГЇГ°ГЁВёГ¬Гі ГЁ ГЇГ®Г¤ГЈГ®ГІГ ГўГ«ГЁГўГ ГҐГ¬ ГЎГіГґГҐГ°
 	char** buf;
 	buf = new char*[packet_num];
     for (int i = 0; i < packet_num; i++)
@@ -86,7 +86,7 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
     if (last_packet_sz > 0)
         fread(buf[full_packet_num], last_packet_sz, 1, f);
 	Sleep(10);
-	// отправляем файл
+	// Г®ГІГЇГ°Г ГўГ«ГїГҐГ¬ ГґГ Г©Г«
 	float progress_step = 70.0 / packet_num;
 	float step_count = 0;
 	for (int i = 0; i < full_packet_num ; i ++) {
@@ -98,7 +98,7 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
         }
 		//Sleep(1);
 		int x = 1000;
-		while(x--); // задержка меньше 1 мс
+		while(x--); // Г§Г Г¤ГҐГ°Г¦ГЄГ  Г¬ГҐГ­ГјГёГҐ 1 Г¬Г±
 	}
 	if (last_packet_sz != 0){
 		sendto(s, buf[full_packet_num], last_packet_sz, 0, saddr, sizeof(SOCKADDR_IPX));
@@ -134,9 +134,9 @@ int main() {
 	bind(s, (sockaddr*)& svr_adr, sizeof(SOCKADDR_IPX));
 	clt_adr.sa_family = AF_IPX;
 	clt_adr.sa_socket = htons(socketID_clt);
-	memset(clt_adr.sa_netnum, 0, 4);		// локальная сеть
-	memset(clt_adr.sa_nodenum, 0xFF, 6);	// всем узлам сети
-	// устанавливаем флаг для посылки широковещательных пакетов
+	memset(clt_adr.sa_netnum, 0, 4);		// Г«Г®ГЄГ Г«ГјГ­Г Гї Г±ГҐГІГј
+	memset(clt_adr.sa_nodenum, 0xFF, 6);	// ГўГ±ГҐГ¬ ГіГ§Г«Г Г¬ Г±ГҐГІГЁ
+	// ГіГ±ГІГ Г­Г ГўГ«ГЁГўГ ГҐГ¬ ГґГ«Г ГЈ Г¤Г«Гї ГЇГ®Г±Г»Г«ГЄГЁ ГёГЁГ°Г®ГЄГ®ГўГҐГ№Г ГІГҐГ«ГјГ­Г»Гµ ГЇГ ГЄГҐГІГ®Гў
 	int set_broadcast = 1;
 	setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char*)& set_broadcast, sizeof(set_broadcast));
 
@@ -150,7 +150,7 @@ int main() {
 
 	cout << "Press any key to start transmission" << endl;
 	getchar();
-	sendFile(s, (sockaddr*)& clt_adr, f_in);	// отправка файла
+	sendFile(s, (sockaddr*)& clt_adr, f_in);	// Г®ГІГЇГ°Г ГўГЄГ  ГґГ Г©Г«Г 
 	fclose(f_in);
 
 	err = closesocket(s);
