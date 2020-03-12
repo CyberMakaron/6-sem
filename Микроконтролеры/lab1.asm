@@ -10,7 +10,7 @@ mov a, p1
 cjne a, 0ffh, j1 
 jmp j1_
 j1:
-`   jnb p1.0, j10
+    jnb p1.0, j10
     jnb p1.1, j11
     jnb p1.2, j12    
     jnb p1.3, j13
@@ -43,7 +43,7 @@ mov a, p1
 cjne a, 0ffh, j2 
 jmp j2_
 j2:
-`   jnb p1.0, j20
+    jnb p1.0, j20
     jnb p1.1, j21
     jnb p1.2, j22    
     jnb p1.3, j23
@@ -76,7 +76,7 @@ mov a, p1
 cjne a, 0ffh, j3 
 jmp j3_
 j3:
-`   jnb p1.0, j30
+    jnb p1.0, j30
     jnb p1.1, j31
     jnb p1.2, j32    
     jnb p1.3, j33
@@ -109,7 +109,7 @@ mov a, p1
 cjne a, 0ffh, j4 
 jmp j4_
 j4:
-`   jnb p1.0, j40
+    jnb p1.0, j40
     jnb p1.1, j41
     jnb p1.2, j42    
     jnb p1.3, j43
