@@ -123,3 +123,20 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.suo
+*.filters
+*.vcxproj
+*.user
+*.tlog
+*.res
+*.lastbuildstate
+*.obj
+*.pch
+*.rc
+*.idb
+*.pdb
+*.jpg
+*.exe
+*.ilk
+*.idb
+*.pdb
