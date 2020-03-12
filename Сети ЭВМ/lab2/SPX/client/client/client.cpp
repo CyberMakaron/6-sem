@@ -1,3 +1,4 @@
+
 // VS-specific
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -30,7 +31,7 @@ int closeWSA() {
 	return 0;
 }
 
-// Человекочитаемый адрес
+//  
 void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	int i;
 	for (i=0; i < 4 ;i++){
@@ -43,7 +44,7 @@ void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	printf("\n");
 }
 
-// Человекочитаемый адрес
+//  
 void ReadIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	char buffer[3];
 	int i;
@@ -75,7 +76,6 @@ struct first_packet {
 
 void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 	char msg[] = "Hello! My address is: 0xGTFO\n";
-	// Пытаемся подключиться к заданному адресу
 	int err = connect(s, saddr, sizeof(SOCKADDR_IPX));
 	if (err){
 		printf("Error while connecting! %X\n", WSAGetLastError());
@@ -88,63 +88,16 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 		cin.get();
 		return;
 	}
-	//unsigned f_sz, buf_sz;
-	//int full_packet_num, last_packet_sz, packet_num;
-	//first_packet fp;
- //   char tmp;
-	//// приём 0-го пакета
-	//int sz = sizeof(SOCKADDR_IPX);
-	//recvfrom(s, (char*) &fp, sizeof(fp), 0, saddr, &sz);
-	//recvfrom(s, &tmp, 1, 0, saddr, &sz);
-	//f_sz= fp.file_sz;
-	//buf_sz = fp.max_buf_sz;
-	//full_packet_num = fp.full_packet_num;
-	//last_packet_sz = fp.last_packet_size;
-	//packet_num = full_packet_num + (last_packet_sz != 0 ? 1 : 0);
-	//cout << "File size: " << f_sz << " bytes" << endl;
-	//cout << "Max data size in packet: " << buf_sz << " bytes" << endl;
-	//cout << "Will be received: " << full_packet_num << " full packets";
-	//if (last_packet_sz != 0)
-	//	cout << " and 1 incomplete packet of " << last_packet_sz << " bytes";
-	//cout << endl;
-
-	////подготовка к приёму файла
-	//char** buf;
-	//buf = new char*[packet_num];
-	//for (int i = 0; i < packet_num; i++)
- //       buf[i] = new char[buf_sz];
-	//// приём файла
-	//float progress_step = 70.0 / packet_num;
-	//float step_count = 0;
-	//for (int i = 0; i < full_packet_num; i++){
-	//	recvfrom(s, buf[i], buf_sz, 0, saddr, &sz);
-	//	recvfrom(s, &tmp, 1, 0, saddr, &sz);
-	//	step_count += progress_step;
- //       while(step_count > 1){
- //           cout << char(219);
- //           step_count--;
- //       }
-	//}
-	//if (last_packet_sz != 0){
-	//	recvfrom(s, buf[full_packet_num], buf_sz, 0, saddr, &sz);
-	//	recvfrom(s, &tmp, 1, 0, saddr, &sz);
-	//	step_count += progress_step;
- //       while(step_count > 1){
- //           cout << char(219);
- //           step_count--;
- //       }
-	//}
-	//cout << endl;
-	//for (int i = 0; i < full_packet_num; i++)
- //       for (int k = 0; k < buf_sz; k++)
- //           fputc(buf[i][k], f);
- //   for (int k = 0; k < last_packet_sz; k++)
- //           fputc(buf[full_packet_num][k], f);
-	//for (int i = 0; i < packet_num; i++)
- //       delete buf[i];
- //   delete buf;
 }
 
+
+/* Задача клиента:
+1. Устанавливает соединение с сервером
+2. Передает ему имя файла. Примем пакет длиной 256 байт (символов), содержащий строку в стиле C. Только имя.
+3. Ждет ответ от сервера
+4. Ответ от сервера тоже имеет длину 256 байт. Это может быть пакет "No file", тогда заканчиваем прием. Если "Ok", продолжаем
+5. Приняв пакет, закрываем сокет
+*/
 
 int main() {
 	int err;
@@ -152,7 +105,10 @@ int main() {
 		return 1;
 
 	SOCKET s;
+	// Константы константочки
 	unsigned short socketID_svr = 0x4444, socketID_clt = 0x4445;
+	// Открываем сокет; SEQPACKET - последовательная передача
+	// NSPROTO_SPX, очевидно, протокол SPX
 	s = socket(AF_IPX, SOCK_SEQPACKET, NSPROTO_SPX);
 	if (s == INVALID_SOCKET) {
 		cout << "Socket creation failed with error: " << WSAGetLastError() << endl;
@@ -162,36 +118,80 @@ int main() {
 	}
 
 	SOCKADDR_IPX srv_adr, clt_adr;
+
 	clt_adr.sa_family = AF_IPX;
 	clt_adr.sa_socket = htons(socketID_clt);
+	// Привязываем сокет s к некоторому сетевому интерфейсу
 	bind(s, (sockaddr*)& clt_adr, sizeof(SOCKADDR_IPX));
-	// Получаем адрес, присвоенный функцией bind
+	// Получаем настоящий адрес, присвоенный bind
 	int sz = sizeof(SOCKADDR_IPX);
 	getsockname(s, (sockaddr*)& clt_adr, &sz);
-	srv_adr.sa_family = AF_IPX;
-	srv_adr.sa_socket = htons(socketID_svr);
+	
 	printf("My address is\n");
 	PrintIpxAddress(clt_adr.sa_netnum, clt_adr.sa_nodenum);
 	printf("Socket: %X\n", clt_adr.sa_socket);
-	//memset(srv_adr.sa_netnum, 0, 4);		// локальная сеть
-	//memset(srv_adr.sa_nodenum, 0xFF, 6);	// всем узлам сети
+
+	// Нам необходимо знать адрес сервера
+	// 2DO: узнавать адрес сервера широковещательным запросом с помощью IPX
+	srv_adr.sa_family = AF_IPX;
+	srv_adr.sa_socket = htons(socketID_svr);
 	printf("Enter server address:\n");
-	//srv_adr.sa_netnum[0] = 'F';
 	ReadIpxAddress(srv_adr.sa_netnum, srv_adr.sa_nodenum);
-	srv_adr.sa_socket = socketID_svr;
-	printf("You entered: \n");
+
+	printf("So, server address is: \n");
 	PrintIpxAddress(srv_adr.sa_netnum, srv_adr.sa_nodenum);
 	printf("Socket: %X\n", srv_adr.sa_socket);
+	
+	// Запрашиваемый файл
 	string f_name;
 	f_name = "test_img_in.jpg";
-	FILE* f_out = fopen(f_name.c_str(), "wb");
-	if (f_out == NULL) {
-		cout << "Unable to open file \"" << f_name << "\"" << endl;
-		return 3;
+
+	cout << " Connecting to server..." << endl;
+
+	// char msg[] = "Hello! My address is: 0xGTFO\n";
+	int err = connect(s, saddr, sizeof(SOCKADDR_IPX));
+	if (err){
+		printf("Error while connecting! %X\n", WSAGetLastError());
+		cin.get();
+		return;
 	}
-	cout << " Waiting for start..." << endl;
-	receiveFile(s, (sockaddr*)& srv_adr, f_out);
-	fclose(f_out);
+	err = send(s, f_name.c_str(), f_name.length(), 0);
+	if (err){
+		printf("Error while sending! %X\n", WSAGetLastError());
+		cin.get();
+		return;
+	}
+	cout << "Shutdown connection" << endl;
+    // shutdown the connection since no more data will be sent
+	// взял функцию из сервера TCP, надо проверить
+
+	#define DEFAULT_BUFLEN 512
+
+    char recvbuf[DEFAULT_BUFLEN];
+    int iResult;
+    int recvbuflen = DEFAULT_BUFLEN;
+
+    iResult = shutdown(s6_bytes, SD_SEND);
+    if (iResult == SOCKET_ERROR) {
+        printf("shutdown failed with error: %d\n", WSAGetLastError());
+        closesocket(s);
+        WSACleanup();
+        return 1;
+    }
+
+    // Receive until the peer closes the connection
+    do {
+
+        iResult = recv(s, recvbuf, recvbuflen, 0);
+		// А че дальше? в файл писать надо наверное
+        if ( iResult > 0 )
+            printf("Bytes received: %d\n", iResult);
+        else if ( iResult == 0 )
+            printf("Connection closed\n");
+        else
+            printf("recv failed with error: %d\n", WSAGetLastError());
+
+    } while( iResult > 0 );
 
 	err = closesocket(s);
 	if (err == SOCKET_ERROR) {
