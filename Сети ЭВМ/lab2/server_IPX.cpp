@@ -1,4 +1,4 @@
-//#define _CRT_SECURE_NO_WARNINGS /// for Visual Studio
+﻿//#define _CRT_SECURE_NO_WARNINGS /// for Visual Studio
 #include <iostream>
 #include <stdio.h>
 #define WIN32_LEAN_AND_MEAN
@@ -74,9 +74,9 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
 	fp.max_buf_sz = buf_sz;
 	fp.full_packet_num = full_packet_num;
 	fp.last_packet_size = last_packet_sz;
-	// 0-é ïàêåò ñ ðàçìåðîì ôàéëà, ìàêñèìàëüíûì ðàçìåðîì ïàêåòà è êîëè÷åñòâîì ïàêåòîâ
+	// 0-й пакет с информацией о размере файла, размерах сегментов и количестве сегментов
 	sendto(s, (char*)& fp, sizeof(fp), 0, saddr, sizeof(SOCKADDR_IPX));
-	// äà¸ì êëèåíòàì âðåìÿ íà ïîäããîòîâêó ê ïðè¸ìó è ïîäãîòàâëèâàåì áóôåð
+	// подготовка буфера для отправки
 	char** buf;
 	buf = new char*[packet_num];
     for (int i = 0; i < packet_num; i++)
@@ -86,7 +86,7 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
     if (last_packet_sz > 0)
         fread(buf[full_packet_num], last_packet_sz, 1, f);
 	Sleep(10);
-	// îòïðàâëÿåì ôàéë
+	// отправка файла
 	float progress_step = 70.0 / packet_num;
 	float step_count = 0;
 	for (int i = 0; i < full_packet_num ; i ++) {
@@ -98,7 +98,7 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
         }
 		//Sleep(1);
 		int x = 1000;
-		while(x--); // çàäåðæêà ìåíüøå 1 ìñ
+		while(x--); // ожидание меньше 1 мс
 	}
 	if (last_packet_sz != 0){
 		sendto(s, buf[full_packet_num], last_packet_sz, 0, saddr, sizeof(SOCKADDR_IPX));
@@ -134,9 +134,9 @@ int main() {
 	bind(s, (sockaddr*)& svr_adr, sizeof(SOCKADDR_IPX));
 	clt_adr.sa_family = AF_IPX;
 	clt_adr.sa_socket = htons(socketID_clt);
-	memset(clt_adr.sa_netnum, 0, 4);		// ëîêàëüíàÿ ñåòü
-	memset(clt_adr.sa_nodenum, 0xFF, 6);	// âñåì óçëàì ñåòè
-	// óñòàíàâëèâàåì ôëàã äëÿ ïîñûëêè øèðîêîâåùàòåëüíûõ ïàêåòîâ
+	memset(clt_adr.sa_netnum, 0, 4);		// локальная сеть
+	memset(clt_adr.sa_nodenum, 0xFF, 6);	// широковещательный канал
+	// настройка широковещательного канала
 	int set_broadcast = 1;
 	setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char*)& set_broadcast, sizeof(set_broadcast));
 
@@ -150,7 +150,7 @@ int main() {
 
 	cout << "Press any key to start transmission" << endl;
 	getchar();
-	sendFile(s, (sockaddr*)& clt_adr, f_in);	// îòïðàâêà ôàéëà
+	sendFile(s, (sockaddr*)& clt_adr, f_in);	// отправка файла
 	fclose(f_in);
 
 	err = closesocket(s);

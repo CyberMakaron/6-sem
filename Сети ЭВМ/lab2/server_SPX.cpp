@@ -1,5 +1,5 @@
-// VS-specific
-#define _CRT_SECURE_NO_WARNINGS
+﻿// VS-specific
+ //#define _CRT_SECURE_NO_WARNINGS
 
 #include <iostream>
 #include <stdio.h>
@@ -9,9 +9,10 @@
 #include <ws2tcpip.h>
 #include <wsipx.h>
 #include <string>
-
+#include <process.h>
+#define BUFLEN 256
 // VS-specific
-#pragma comment(lib, "ws2_32.lib")
+//#pragma comment(lib, "ws2_32.lib")
 
 using namespace std;
 
@@ -52,20 +53,6 @@ void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	printf("\n");
 }
 
-void ReadIpxAddress(char *lpsNetnum, char *lpsNodenum){
-	char buffer[3];
-	int i;
-	for (i=0; i < 4 ;i++){
-		scanf("%2s", buffer);
-		sscanf(buffer, "%X", (UCHAR *)&(lpsNetnum[i]));
-	}
-	scanf("%*c");
-	for (i=0; i < 6 ;i++){
-		scanf("%2s", buffer);
-		sscanf(buffer, "%X", (UCHAR *)&(lpsNodenum[i]));
-	}
-}
-
 long int get_file_size(FILE* f) {
 	long int size;
 	fseek(f, 0, SEEK_END);
@@ -73,6 +60,80 @@ long int get_file_size(FILE* f) {
 	fseek(f, 0, SEEK_SET);
 	return size;
 };
+
+DWORD WINAPI workWithClient(CONST LPVOID lpParam){
+	SOCKET client_socket = *((SOCKET*)(lpParam));
+	char recvbuf[BUFLEN];
+	int iResult, iSendResult;
+	int recvbuflen = BUFLEN;
+
+	// Receive until the peer shuts down the connection
+	iResult = recv(client_socket, recvbuf, recvbuflen, 0);
+	if (iResult > 0) {
+		printf("Bytes received: %d\n", iResult);
+	} else if (iResult == 0)
+		printf("Connection closing...\n");
+	else {
+		printf("recv failed: %d\n", WSAGetLastError());
+		closesocket(client_socket);
+		WSACleanup();
+		ExitThread(1);
+	}
+	bool file_found = true;
+
+	cout << "Opening file " << recvbuf << endl;
+	FILE *f = fopen(recvbuf, "rb");
+	if (f == NULL) {
+		cout << "Can't find file \"" << recvbuf << "\"" << endl;
+		file_found = false;
+	}
+	int f_sz = file_found ? get_file_size(f) : 0;
+	char *f_buf = new char[f_sz];
+	if (file_found) fread(f_buf, f_sz, 1, f);
+
+    iSendResult = send(client_socket, (char*)&f_sz, sizeof(int), 0);
+    if (file_found){
+        if (iSendResult == SOCKET_ERROR) {
+            printf("send failed: %d\n", WSAGetLastError());
+            closesocket(client_socket);
+            WSACleanup();
+            ExitThread(1);
+        }
+        iSendResult = send(client_socket, f_buf, f_sz, 0);
+        fclose(f);
+        if (iSendResult == SOCKET_ERROR) {
+            printf("send failed: %d\n", WSAGetLastError());
+            closesocket(client_socket);
+            WSACleanup();
+            ExitThread(1);
+        }
+        printf("Bytes sent: %d\n", iSendResult);
+	}
+	ExitThread(0);
+}
+
+DWORD WINAPI listenClients(CONST LPVOID lpParam){
+	SOCKET s = *((SOCKET*)lpParam);
+	SOCKET client_socket;
+	SOCKADDR_IPX clt_addr;
+	int sz = sizeof(clt_addr);
+	// Accept a client socket
+	while(1){
+		client_socket = accept(s, (sockaddr*)&clt_addr, &sz);
+		if (client_socket == INVALID_SOCKET) {
+			printf("accept failed: %d\n", WSAGetLastError());
+			closesocket(s);
+			WSACleanup();
+			ExitThread(1);
+		}
+		printf("New client accept: \n");
+		printf("Client address: ");
+		PrintIpxAddress(clt_addr.sa_netnum, clt_addr.sa_nodenum);
+		printf("Socket: %X\n", htons(clt_addr.sa_socket));
+		CreateThread(NULL, 0, &workWithClient, &client_socket, 0, NULL);
+		Sleep(1);
+	}
+}
 
 void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
 	unsigned f_sz = get_file_size(f);
@@ -92,15 +153,12 @@ void sendFile(SOCKET s, const struct sockaddr FAR* saddr, FILE *f) {
 	}
 }
 
-
 int main() {
 	int err;
 	if (initWSA())
 		return 1;
 	SOCKET s;
 	unsigned short socketID_svr = 0x4444, socketID_clt = 0x4445;
-	// Открываем сокет; SEQPACKET - последовательная передача
-	// NSPROTO_SPX, очевидно, протокол SPX
 	s = socket(AF_IPX, SOCK_SEQPACKET, NSPROTO_SPX);
 	if (s == INVALID_SOCKET) {
 		cout << "Socket creation failed with error: " << WSAGetLastError() << endl;
@@ -110,7 +168,7 @@ int main() {
 	}
 
 	// Создаем адрес сервера srv_adr
-	SOCKADDR_IPX srv_adr, clt_adr;
+	SOCKADDR_IPX srv_adr;
 	srv_adr.sa_family = AF_IPX;
 	srv_adr.sa_socket = htons(socketID_svr);
 	// Привязываем к сокету
@@ -124,98 +182,22 @@ int main() {
 
 	printf("Server address: \n");
 	PrintIpxAddress(srv_adr.sa_netnum, srv_adr.sa_nodenum);
-	printf("Socket: %X\n", srv_adr.sa_socket);
-	
-	// // Получим по электронному баллу
-	// clt_adr.sa_family = AF_IPX;
-	// clt_adr.sa_socket = htons(socketID_clt);
-	// ReadIpxAddress(clt_adr.sa_netnum, clt_adr.sa_nodenum);
-
-	// printf("Client address: \n");
-	// PrintIpxAddress(clt_adr.sa_netnum, clt_adr.sa_nodenum);
-	// printf("Socket: %X\n", clt_adr.sa_socket);
-	// broadcast невозможно использовать с SPX
-	/*int set_broadcast = 1;
-	setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char*)& set_broadcast, sizeof(set_broadcast));*/
-
-	cout << "Press any key to start transmission" << endl;
-	getchar();
+	printf("Socket: %X\n", htons(srv_adr.sa_socket));
 
 	cout << "Listening...\n";
 	if ( listen( s, SOMAXCONN ) == SOCKET_ERROR ) {
-		printf( "Listen failed with error: %ld\n", WSAGetLastError() );
+		cout << "Listen failed with error: " << WSAGetLastError() << endl;
 		closesocket(s);
 		WSACleanup();
 		return 1;
 	}
 
-	cout << "Incoming message\n";
-	SOCKET client_socket = INVALID_SOCKET;
-	// Accept a client socket
-	client_socket = accept(s, NULL, NULL);
-	if (client_socket == INVALID_SOCKET) {
-		printf("accept failed: %d\n", WSAGetLastError());
-		closesocket(s);
-		WSACleanup();
-		return 1;
-	}
-	cout << "Accepted\n";
-	// После того как мы получили сокет client_sock, надо ответвиться другим тредом
-	// В этом другом треде нужно работать с клиентом, а здесь - продолжать слушать
-	#define BUFLEN 256
+	// поток принятия запросов клиентов
+	CreateThread(NULL, 0, &listenClients, &s, 0, NULL);
 
-	char recvbuf[BUFLEN];
-	int iResult, iSendResult;
-	int recvbuflen = BUFLEN;
+	cout << "Press \'e\' to exit.." << endl;
+	while (getchar() != 'e');
 
-	// Receive until the peer shuts down the connection
-	do {
-		iResult = recv(client_socket, recvbuf, recvbuflen, 0);
-		if (iResult > 0) {
-			printf("Bytes received: %d\n", iResult);
-		} else if (iResult == 0)
-			printf("Connection closing...\n");
-		else {
-			printf("recv failed: %d\n", WSAGetLastError());
-			closesocket(client_socket);
-			WSACleanup();
-			return 1;
-		}
-	} while (iResult > 0);
-	bool file_found = true;
-
-	FILE *f = fopen(recvbuf, "rb");
-	if (f == NULL) {
-		cout << "Can't find file \"" << recvbuf << "\"" << endl;
-		file_found = false;
-	}
-	int f_sz = get_file_size(f);
-	char *f_buf = new char[f_sz];
-	fread(f_buf, 1, f_sz, f);
-
-	if (file_found){
-		iSendResult = send(client_socket, "Ok", BUFLEN, 0);
-	}else{
-		iSendResult = send(client_socket, "File not found", BUFLEN, 0);
-	}
-	if (iSendResult == SOCKET_ERROR) {
-		printf("send failed: %d\n", WSAGetLastError());
-		closesocket(client_socket);
-		WSACleanup();
-		return 1;
-	}
-	if (file_found){
-		iSendResult = send(client_socket, f_buf, f_sz, 0);
-	}
-	if (iSendResult == SOCKET_ERROR) {
-		printf("send failed: %d\n", WSAGetLastError());
-		closesocket(client_socket);
-		WSACleanup();
-		return 1;
-	}
-	printf("Bytes sent: %d\n", iSendResult);
-	// Конец треда работы с клиентами
-	
 	err = closesocket(s);
 	if (err == SOCKET_ERROR) {
 		cout << "Socket closure failed with error: " << WSAGetLastError() << endl;
@@ -223,10 +205,8 @@ int main() {
 			return 12;
 		return 2;
 	}
-
 	if (closeWSA())
 		return 1;
 	cout << "Translation complete";
-	getchar();
-	return 0;
+	ExitProcess(0);
 }

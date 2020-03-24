@@ -7,6 +7,7 @@
 #include <ws2tcpip.h>
 #include <wsipx.h>
 #include <string>
+#include <stdlib.h>
 
 // Need to link with Ws2_32.lib (for Visual Studio)
 //#pragma comment(lib, "ws2_32.lib")
@@ -58,10 +59,9 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 	int full_packet_num, last_packet_sz, packet_num;
 	first_packet fp;
     char tmp;
-	// ïè¸ì 0-ãî ïàêåòà
+	// приём пакета с информацией о рамере файла и размером пакетов
 	int sz = sizeof(SOCKADDR_IPX);
 	recvfrom(s, (char*) &fp, sizeof(fp), 0, saddr, &sz);
-	recvfrom(s, &tmp, 1, 0, saddr, &sz);
 	f_sz= fp.file_sz;
 	buf_sz = fp.max_buf_sz;
 	full_packet_num = fp.full_packet_num;
@@ -74,17 +74,16 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 		cout << " and 1 incomplete packet of " << last_packet_sz << " bytes";
 	cout << endl;
 
-	//ïîäãîòîâêà ê ïðè¸ìó ôàéëà
+	//подготовка буфера приёма
 	char** buf;
 	buf = new char*[packet_num];
 	for (int i = 0; i < packet_num; i++)
         buf[i] = new char[buf_sz];
-	// ïðè¸ì ôàéëà
+	// приём фала
 	float progress_step = 70.0 / packet_num;
 	float step_count = 0;
 	for (int i = 0; i < full_packet_num; i++){
 		recvfrom(s, buf[i], buf_sz, 0, saddr, &sz);
-		recvfrom(s, &tmp, 1, 0, saddr, &sz);
 		step_count += progress_step;
         while(step_count > 1){
             cout << char(219);
@@ -93,7 +92,6 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 	}
 	if (last_packet_sz != 0){
 		recvfrom(s, buf[full_packet_num], buf_sz, 0, saddr, &sz);
-		recvfrom(s, &tmp, 1, 0, saddr, &sz);
 		step_count += progress_step;
         while(step_count > 1){
             cout << char(219);
@@ -101,6 +99,7 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
         }
 	}
 	cout << endl;
+	// запись в файл
 	for (int i = 0; i < full_packet_num; i++)
         for (int k = 0; k < buf_sz; k++)
             fputc(buf[i][k], f);
@@ -131,13 +130,18 @@ int main() {
 	clt_adr.sa_family = AF_IPX;
 	clt_adr.sa_socket = htons(socketID_clt);
 	bind(s, (sockaddr*)& clt_adr, sizeof(SOCKADDR_IPX));
+	// Получаем настоящий адрес, присвоенный bind
+	int sz = sizeof(SOCKADDR_IPX);
+	getsockname(s, (sockaddr*)& clt_adr, &sz);
+
 	svr_adr.sa_family = AF_IPX;
 	svr_adr.sa_socket = htons(socketID_svr);
-	memset(svr_adr.sa_netnum, 0, 4);		// ëîêàëüíàÿ ñåòü
-	memset(svr_adr.sa_nodenum, 0xFF, 6);	// âñåì óçëàì ñåòè
+	memset(svr_adr.sa_netnum, 0, 4);		// локальная сеть
+	memset(svr_adr.sa_nodenum, 0xFF, 6);	// широковещательный канал
 
-	string f_name;
-	f_name = "test_img_in.jpg";
+	char tmp[4];
+	string f_name = itoa(htons(clt_adr.sa_socket), tmp, 16);
+	f_name += "test_img.jpg";
 	FILE* f_out = fopen(f_name.c_str(), "wb");
 	if (f_out == NULL) {
 		cout << "Unable to open file \"" << f_name << "\"" << endl;

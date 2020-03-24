@@ -1,5 +1,5 @@
 // VS-specific
-#define _CRT_SECURE_NO_WARNINGS
+//#define _CRT_SECURE_NO_WARNINGS
 
 #include <iostream>
 #include <stdio.h>
@@ -9,9 +9,10 @@
 #include <ws2tcpip.h>
 #include <wsipx.h>
 #include <string>
+#include <stdlib.h>
 
 // VS-specific
-#pragma comment(lib, "ws2_32.lib")
+//#pragma comment(lib, "ws2_32.lib")
 
 using namespace std;
 
@@ -40,7 +41,6 @@ int closeWSA() {
 	return 0;
 }
 
-//  
 void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	int i;
 	for (i=0; i < 4 ;i++){
@@ -53,7 +53,6 @@ void PrintIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	printf("\n");
 }
 
-//  
 void ReadIpxAddress(char *lpsNetnum, char *lpsNodenum){
 	char buffer[3];
 	int i;
@@ -76,15 +75,8 @@ long int get_file_size(FILE* f) {
 	return size;
 };
 
-struct first_packet {
-	unsigned file_sz;
-	int max_buf_sz;
-	int full_packet_num;
-	int last_packet_size;
-};
-
 void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
-	char msg[] = "Hello! My address is: 0xGTFO\n";
+	char msg[] = "Hello!\n";
 	int err = connect(s, saddr, sizeof(SOCKADDR_IPX));
 	if (err){
 		printf("Error while connecting! %X\n", WSAGetLastError());
@@ -99,25 +91,15 @@ void receiveFile(SOCKET s, struct sockaddr FAR* saddr, FILE* f) {
 	}
 }
 
-
-/* Задача клиента:
-1. Устанавливает соединение с сервером
-2. Передает ему имя файла. Примем пакет длиной 256 байт (символов), содержащий строку в стиле C. Только имя.
-3. Ждет ответ от сервера
-4. Ответ от сервера тоже имеет длину 256 байт. Это может быть пакет "No file", тогда заканчиваем прием. Если "Ok", продолжаем
-5. Приняв пакет, закрываем сокет
-*/
-
 int main() {
 	int err;
 	if (initWSA())
 		return 1;
 
 	SOCKET s;
-	// Константы константочки
-	unsigned short socketID_svr = 0x4444, socketID_clt = 0x4445;
-	// Открываем сокет; SEQPACKET - последовательная передача
-	// NSPROTO_SPX, очевидно, протокол SPX
+	unsigned short socketID_svr = 0x4444, socketID_clt = 0;
+	// РћС‚РєСЂС‹РІР°РµРј СЃРѕРєРµС‚; SEQPACKET - РїРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅР°СЏ РїРµСЂРµРґР°С‡Р°
+	// NSPROTO_SPX - РїСЂРѕС‚РѕРєРѕР» SPX
 	s = socket(AF_IPX, SOCK_SEQPACKET, NSPROTO_SPX);
 	if (s == INVALID_SOCKET) {
 		cout << "Socket creation failed with error: " << WSAGetLastError() << endl;
@@ -130,78 +112,76 @@ int main() {
 
 	clt_adr.sa_family = AF_IPX;
 	clt_adr.sa_socket = htons(socketID_clt);
-	// Привязываем сокет s к некоторому сетевому интерфейсу
+	// РџСЂРёРІСЏР·С‹РІР°РµРј СЃРѕРєРµС‚ s Рє РЅРµРєРѕС‚РѕСЂРѕРјСѓ СЃРµС‚РµРІРѕРјСѓ РёРЅС‚РµСЂС„РµР№СЃСѓ
 	bind(s, (sockaddr*)& clt_adr, sizeof(SOCKADDR_IPX));
-	// Получаем настоящий адрес, присвоенный bind
+	// РџРѕР»СѓС‡Р°РµРј РЅР°СЃС‚РѕСЏС‰РёР№ Р°РґСЂРµСЃ, РїСЂРёСЃРІРѕРµРЅРЅС‹Р№ bind
 	int sz = sizeof(SOCKADDR_IPX);
 	getsockname(s, (sockaddr*)& clt_adr, &sz);
-	
-	printf("My address is\n");
-	PrintIpxAddress(clt_adr.sa_netnum, clt_adr.sa_nodenum);
-	printf("Socket: %X\n", clt_adr.sa_socket);
 
-	// Нам необходимо знать адрес сервера
-	// 2DO: узнавать адрес сервера широковещательным запросом с помощью IPX
+	printf("My address is: ");
+	PrintIpxAddress(clt_adr.sa_netnum, clt_adr.sa_nodenum);
+	printf("Socket: %X\n", htons(clt_adr.sa_socket));
+
 	srv_adr.sa_family = AF_IPX;
 	srv_adr.sa_socket = htons(socketID_svr);
-	printf("Enter server address:\n");
-	ReadIpxAddress(srv_adr.sa_netnum, srv_adr.sa_nodenum);
+	memset(srv_adr.sa_netnum, 0, 4);
+	char *c = srv_adr.sa_nodenum;
+	c[0] = 0x08; c[1] = 0; c[2] = 0x27; c[3] = 0xCD; c[4] = 0x06; c[5] = 0xC4;
 
-	printf("So, server address is: \n");
+	printf("Server address is: ");
 	PrintIpxAddress(srv_adr.sa_netnum, srv_adr.sa_nodenum);
-	printf("Socket: %X\n", srv_adr.sa_socket);
-	
-	// Запрашиваемый файл
+	printf("Socket: %X\n", htons(srv_adr.sa_socket));
+
+	// Р—Р°РїСЂР°С€РёРІР°РµРјС‹Р№ С„Р°Р№Р»
 	string f_name;
-	f_name = "test_img_in.jpg";
+	cout << "Enter file name to load: \n";
+	cin >> f_name;
+    cin.get();
 
 	cout << " Connecting to server..." << endl;
 
-	// char msg[] = "Hello! My address is: 0xGTFO\n";
-	int err = connect(s, saddr, sizeof(SOCKADDR_IPX));
+	err = connect(s, (sockaddr*)&srv_adr, sizeof(SOCKADDR_IPX));
 	if (err){
 		printf("Error while connecting! %X\n", WSAGetLastError());
 		cin.get();
-		return;
+		return 2;
 	}
-	err = send(s, f_name.c_str(), f_name.length(), 0);
-	if (err){
+	err = send(s, f_name.c_str(), f_name.length()+1, 0);
+	if (err == SOCKET_ERROR){
 		printf("Error while sending! %X\n", WSAGetLastError());
 		cin.get();
-		return;
+		return 3;
 	}
-	cout << "Shutdown connection" << endl;
-    // shutdown the connection since no more data will be sent
-	// взял функцию из сервера TCP, надо проверить
 
-	#define DEFAULT_BUFLEN 512
-
-    char recvbuf[DEFAULT_BUFLEN];
     int iResult;
-    int recvbuflen = DEFAULT_BUFLEN;
+    int f_sz;
 
-    iResult = shutdown(s6_bytes, SD_SEND);
-    if (iResult == SOCKET_ERROR) {
-        printf("shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(s);
-        WSACleanup();
-        return 1;
-    }
+	iResult = recv(s, (char*)&f_sz, sizeof(int), 0);
+    if ( iResult > 0 )
+        printf("Bytes received: %d\n", iResult);
+    else if ( iResult == 0 )
+        printf("Connection closed\n");
+    else
+        printf("recv failed with error: %d\n", WSAGetLastError());
+    printf("file size: %i, \n", f_sz);
 
-    // Receive until the peer closes the connection
-    do {
-
-        iResult = recv(s, recvbuf, recvbuflen, 0);
-		// А че дальше? в файл писать надо наверное
+    if (f_sz == 0) cout << "File not found!" << endl;
+    else {
+        char* recvbuf = new char[f_sz];
+        iResult = recv(s, recvbuf, f_sz, 0);
         if ( iResult > 0 )
             printf("Bytes received: %d\n", iResult);
         else if ( iResult == 0 )
             printf("Connection closed\n");
         else
             printf("recv failed with error: %d\n", WSAGetLastError());
-
-    } while( iResult > 0 );
-
+        char tmp[4];
+        string new_file_name(itoa(htons(clt_adr.sa_socket), tmp, 16));
+        FILE* f = fopen((new_file_name + f_name).c_str(), "wb");
+        fwrite(recvbuf, f_sz, 1, f);
+        delete recvbuf;
+        fclose(f);
+    }
 	err = closesocket(s);
 	if (err == SOCKET_ERROR) {
 		cout << "Socket closure failed with error: " << WSAGetLastError() << endl;
@@ -216,4 +196,3 @@ int main() {
 	getchar();
 	return 0;
 }
-
