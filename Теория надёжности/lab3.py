@@ -2,14 +2,12 @@ import random
 import math
 import numpy
 import matplotlib.pyplot as pyplot
+from numpy import linalg as la
 
 i_ = 41
 j_ = 30
 k_ = 17
-sz = 10000              #количество испытаний
-base_state = 0
-state = base_state      # текущее состояние: 0 - A, 1 - B, 2 - C
-count = 0               # количество перелётов
+sz = 10000              #количество испытаний             
 
 ab = j_  / (j_ + k_)
 ac = k_ / (j_ + k_) 
@@ -21,21 +19,17 @@ cc = k_ / (i_ + j_ + k_)
 
 
 # Матрица переходных вероятностей
+P = numpy.array([
+    [0,  ab,  ac], # A
+    [ba,  0,  bc], # B
+    [ca, cb,  cc]]) # C
 #     A    B    C
-P = [[0,  ab,  ac], # A
-     [ba,  0,  bc], # B
-     [ca, cb,  cc]] # C
-print(P)
+print("Матрица переходных вероятностей P:\n", P)
 
-for i in range(0, sz):
-    r = random.random()
-    j = 0
-    while r > P[state][j]:
-        r -= P[state][j]
-        j += 1
-    state = j
-    count += 1
-    while state != 0:
+for k in range (0, 3):
+    state = base_state = k  #состояние: 0 - A, 1 - B, 2 - C
+    count = 0               # количество перелётов
+    for i in range(0, sz):
         r = random.random()
         j = 0
         while r > P[state][j]:
@@ -43,28 +37,28 @@ for i in range(0, sz):
             j += 1
         state = j
         count += 1
-count /= sz
-print("В ходе эксперемента муха возвращалась в точку А в среднем за {} перелётов".format(count))
+        while state != base_state:
+            r = random.random()
+            j = 0
+            while r > P[state][j]:
+                r -= P[state][j]
+                j += 1
+            state = j
+            count += 1
+    count /= sz
+    print("В ходе эксперемента муха возвращалась в точку {} в среднем за {} перелётов".format(chr(65+k), count))
 
-'''Q = [[0,  lo, 0 ],
-     [ol, oo, op], 
-     [0,  po, 0 ]]
-
-R = [[lr, 0], 
-     [0, 0], 
-     [0, pk]]
-
-K_t = 1.64     # 6 степеней свободы
-N = numpy.linalg.inv(numpy.eye(3) - Q)
-print("Теория:")
-print("N:\n", N)
-B = N.dot(R)
-print("B:\n", B)
-print("\tРека: ", int(B[base_state-2][0]*sz))
-print("\tКопья: ", int(B[base_state-2][1]*sz))
-print("\tСреднее время жизни: ", numpy.sum([N[base_state-2][i] for i in range(0, 3)]))
-print("Проверка гипотезы о том, что экспериментальная вероятность поглотиться в S_0 (река), начиная с S_3 (обе ноги) соотвествует теоретическому значению:")
-p0 = math.sqrt(B[base_state-2][0])
-K_v = (river_count/sz - p0)/(math.sqrt(p0*(1-p0)/6))
-print("К_в = {}, К_т: {}\n{}".format(K_v, K_t,
-"Гипотеза верна!" if abs(K_v) < K_t else "Гипотезу следует отбросить!"))'''
+print("\tТеперь посчитаем теоретически среднее количество перелётов")
+#t - непдвижная точка, P1 - матрица коэффициетов СЛАУ
+P1 = [[-1,  ab,  ac],
+     [ca, cb, cc-1],
+     [1, 1,  1]]
+b = [0, 0, 1]   #столбец свободных членов
+t = la.solve(P1, b)
+print("Неподвижная точка t:")
+print(t)
+print("Проверим, умножив на матрицу переходных вероятностей (t*P):")
+print(numpy.dot(P, t))
+M = 1/t
+print("Среднее количество перелётов для возвращения в каждую точку M:")
+print(M)
