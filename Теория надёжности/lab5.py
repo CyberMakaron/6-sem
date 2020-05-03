@@ -11,7 +11,6 @@ m = n + 1                       # Размер очереди
 lambd = 1 + i / 4               # Интенсивность потока заявок
 tau = 5 / (5 + j)               # Среднее время обработки сообщений
 
-
 print("Количество каналов передачи n = {}\nРазмер очереди m = {}\nСообщений в минуту λ = {}\nСреднее время обработки сообщений τ = {}".format(n, m, lambd, tau))
 
 mu = 1 / tau                    # Интенсивность потока обслуживания
@@ -20,7 +19,7 @@ print("Интенсивность потока обслуживания μ = {}\
 P = [0]                         # Предельные вероятности (среднее относительное время, которое канал занят (p0 - все свободны))
 for i in range (0, n + 1):
      P[0] += (ro ** i) / fact(i)
-P[0] += (ro ** (n + 1)) * (1 - (ro / n) ** m) / (n * fact(n) * (1 - ro / n))
+P[0] += (ro ** (n + 1)) * (1 - (ro / n) ** m) / (fact(n) * (n - ro))
 P[0] = P[0] ** -1
 for i in range (1, n + 1):
      P.append((ro ** i) / fact(i) * P[0])
@@ -90,18 +89,18 @@ def newMessage(message, channels, queue):
 
 channels = [0 for i in range (0, n)] # Каналы связи (0, если не обрабатывается, иначе - оставшееся время)
 queue = []
-maxTime = 200000         # Время работы
+maxTime = 500000         # Время работы
 busyChannels = 0         # Занятые каналы
 unProcessedMessages = 0  # Необработанные сообщения
 totalMessages = 0        # Всего сообщений
-dt = 0.01                 # Δt    
+dt = 0.005                 # Δt    
 averageTime = 0          # Среднее время обработки сообщения
 averageQueueTime = [0]   # Среднее время ожидания в очереди
 queueCount = [0]         # Общее количество сообщений в очереди
 averageQueueCount = 0    # Среднее количество сообщений в очереди
 for currentTime in range (0, int(maxTime / dt)):
-     #if (random.random() < 1 - math.exp(-1 * lambd * dt)):                      # Если сообщение пришло
-     if (random.random() < lambd * dt):                                         # Если сообщение пришло
+     if (random.random() < 1 - math.exp(-1 * lambd * dt)):                      # Если сообщение пришло
+     #if (random.random() < lambd * dt):                                         # Если сообщение пришло
           message = tau - 0.05 + random.random() / 10                           # Назначаем ему время обработки
           averageTime += message
           totalMessages += 1                         
