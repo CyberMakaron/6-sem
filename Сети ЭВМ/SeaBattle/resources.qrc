@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/img">
+        <file>images/background.png</file>
+        <file>images/dot.png</file>
+        <file>images/full.png</file>
+        <file>images/half.png</file>
+        <file>images/redfull.png</file>
+        <file>images/redhalf.png</file>
+    </qresource>
+</RCC>
