@@ -4,7 +4,9 @@
         <file>images/dot.png</file>
         <file>images/full.png</file>
         <file>images/half.png</file>
-        <file>images/redfull.png</file>
-        <file>images/redhalf.png</file>
+        <file>images/ship_1.png</file>
+        <file>images/ship_2.png</file>
+        <file>images/ship_3.png</file>
+        <file>images/ship_4.png</file>
     </qresource>
 </RCC>

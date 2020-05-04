@@ -10,8 +10,10 @@ void Images::load(){
     images.insert("dot", QImage(":/img/images/dot.png"));
     images.insert("full", QImage(":/img/images/full.png"));
     images.insert("half", QImage(":/img/images/half.png"));
-    images.insert("redhalf", QImage(":/img/images/redhalf.png"));
-    images.insert("redfull", QImage(":/img/images/redfull.png"));
+    images.insert("ship_1", QImage(":/img/images/ship_1.png"));
+    images.insert("ship_2", QImage(":/img/images/ship_2.png"));
+    images.insert("ship_3", QImage(":/img/images/ship_3.png"));
+    images.insert("ship_4", QImage(":/img/images/ship_4.png"));
     isLoaded_ = true;
 }
 

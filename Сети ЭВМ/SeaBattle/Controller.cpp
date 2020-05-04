@@ -90,7 +90,6 @@ void Controller::markMySunken(int x, int y){
         a = x; b = x;
         while(model->getMyCell(a, y) == CL_HALF) a--;
         while(model->getMyCell(b, y) == CL_HALF) b++;
-        //qDebug() << "a = " << model->getMyCell(x, a) << " b = " << model->getMyCell(x, b);
         if (model->getMyCell(a, y) == CL_SHIP || model->getMyCell(b, y) == CL_SHIP)
             return;
         for (i = a + 1; i < b; i++)
@@ -101,7 +100,6 @@ void Controller::markMySunken(int x, int y){
         a = y; b = y;
         while(model->getMyCell(x, a) == CL_HALF) a--;
         while(model->getMyCell(x, b) == CL_HALF) b++;
-        //qDebug() << "a = " << model->getMyCell(x, a) << " b = " << model->getMyCell(x, b);
         if (model->getMyCell(x, a) == CL_SHIP || model->getMyCell(x, b) == CL_SHIP)
             return;
         for (i = a + 1; i < b; i++)
@@ -120,7 +118,6 @@ void Controller::markEnemySunken(int x, int y){
         a = x; b = x;
         while(model->getEnemyCell(a, y) == CL_HALF) a--;
         while(model->getEnemyCell(b, y) == CL_HALF) b++;
-        //qDebug() << "a = " << model->getEnemyCell(x, a) << " b = " << model->getEnemyCell(x, b);
         if (model->getEnemyCell(a, y) == CL_SHIP || model->getEnemyCell(b, y) == CL_SHIP)
             return;
         for (i = a + 1; i < b; i++)
@@ -131,7 +128,6 @@ void Controller::markEnemySunken(int x, int y){
         a = y; b = y;
         while(model->getEnemyCell(x, a) == CL_HALF) a--;
         while(model->getEnemyCell(x, b) == CL_HALF) b++;
-        //qDebug() << "a = " << model->getEnemyCell(x, a) << " b = " << model->getEnemyCell(x, b);
         if (model->getEnemyCell(x, a) == CL_SHIP || model->getEnemyCell(x, b) == CL_SHIP)
             return;
         for (i = a + 1; i < b; i++)
@@ -238,14 +234,14 @@ void Controller::setStatus(Status st){
 }
 
 QImage Controller::myFieldImage(Images& img){
-    return getFieldImage(img, 0);
+    return getFieldImage(img, false);
 }
 
 QImage Controller::enemyFieldImage(Images& img){
-    return getFieldImage(img, 1);
+    return getFieldImage(img, true);
 }
 
-QImage Controller::getFieldImage(Images& img, char fld){
+QImage Controller::getFieldImage(Images& img, bool atEnemyField){
     QImage image(FIELD_WIDTH, FIELD_HEIGHT, QImage::Format_ARGB32);
     Cell cell;
     image.fill(0);
@@ -254,23 +250,35 @@ QImage Controller::getFieldImage(Images& img, char fld){
     double cfy = 1.0 * FIELD_HEIGHT / 10.0;
     for(int i = 0; i < 10; i++)
         for(int j = 0; j < 10; j++){
-            if(fld == 0)
-                cell = model->getMyCell(i, j);
-            else
+            if(atEnemyField)
                 cell = model->getEnemyCell(i, j);
+            else
+                cell = model->getMyCell(i, j);
+
+            int ship_size;
+            ShipDisplayMode mode = model->getDisplayMode(ship_size, i, j, atEnemyField);
+            if (mode != SDM_NONE && ((atEnemyField && cell == CL_SUNKEN) || !atEnemyField)){
+                QImage ship_img(img.get("ship_" + QString::number(ship_size)));
+                if (mode == SDM_VERTICAL){
+                    QMatrix matr;
+                    matr.rotate(90.f);
+                    painter.drawImage(i * cfx, j * cfy, ship_img.transformed(matr));
+                } else
+                    painter.drawImage(i * cfx, j * cfy, ship_img);
+            }
+
             switch(cell){
             case CL_DOT:
-                painter.drawImage(i * cfx, j * cfy, img.get("dot"));
+                    painter.drawImage(i * cfx, j * cfy, img.get("dot"));
                 break;
             case CL_HALF:
-                painter.drawImage(i * cfx, j * cfy, fld ? img.get("half") : img.get("redhalf"));
+            case CL_SUNKEN:
+                painter.drawImage(i * cfx, j * cfy, img.get("half"));
                 break;
             case CL_SHIP:
-                if (fld == 0)
+                if (!atEnemyField && model->getStatus() == ST_PLACING_SHIPS)
                     painter.drawImage(i * cfx, j * cfy, img.get("full"));
                 break;
-            case CL_SUNKEN:
-                    painter.drawImage(i * cfx, j * cfy, img.get("redfull"));
             }
         }
     return image;

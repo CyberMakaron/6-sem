@@ -4,6 +4,7 @@
 #include "Field.h"
 
 enum Status{ST_PLACING_SHIPS = 0, ST_WAITING_STEP, ST_MAKING_STEP};
+enum ShipDisplayMode{SDM_NONE = 0, SDM_HORIZONTAL = 1, SDM_VERTICAL = 2};
 
 class Model: public QObject
 {
@@ -22,6 +23,7 @@ public:
     void clearMyField();
     int shipNum(int size) const;
     bool isShip(int size, int x, int y) const;
+    ShipDisplayMode getDisplayMode(int &size, int x, int y, bool atEnemyField) const;
     int getMyShipsNum();
     int getEnemyShipsNum();
     void setMyShipsNum(int n);

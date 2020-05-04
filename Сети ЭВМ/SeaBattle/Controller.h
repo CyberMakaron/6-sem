@@ -26,7 +26,7 @@ public:
     void doEnemyStep();
     QImage myFieldImage(Images& img);
     QImage enemyFieldImage(Images& img);
-    QImage getFieldImage(Images& img, char fld);
+    QImage getFieldImage(Images& img, bool atEnemyField);
     GameResult checkGameResult();
     void markMySunken(int x, int y);
     void markEnemySunken(int x, int y);

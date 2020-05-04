@@ -29,21 +29,27 @@ void MainWindow::paintEvent(QPaintEvent* event){
     const int y = this->centralWidget()->y();
     QPainter painter(this);
     painter.drawImage(0, y, img.get("field"));
-    painter.drawImage( MYFIELD_X, MYFIELD_Y + y, controller->myFieldImage(img));
-    painter.drawImage( ENEMYFIELD_X, ENEMYFIELD_Y + y, controller->enemyFieldImage(img));
+    painter.drawImage(MYFIELD_X, MYFIELD_Y + y, controller->myFieldImage(img));
+    painter.drawImage(ENEMYFIELD_X, ENEMYFIELD_Y + y, controller->enemyFieldImage(img));
 
-    switch(controller->getStatus()){
-    case ST_PLACING_SHIPS:
-        setStatus("Расстановка кораблей");
-        break;
+    if(controller->checkGameResult() == GR_NONE){
+        switch(controller->getStatus()){
+        case ST_PLACING_SHIPS:
+            setStatus("Расстановка кораблей");
+            break;
 
-    case ST_MAKING_STEP:
-        setStatus("Ваш ход");
-        break;
+        case ST_MAKING_STEP:
+            setStatus("Ваш ход");
+            break;
 
-    case ST_WAITING_STEP:
-        setStatus("Ход противника");
-        break;
+        case ST_WAITING_STEP:
+            setStatus("Ход противника");
+            break;
+        }
+    } else{
+        QString messageString = controller->checkGameResult() == GR_WON ? "Победа!" : "Поражение!";
+        messageString += " Для начала новой игры выберите соответствующий пункт меню.";
+        setStatus(messageString);
     }
 }
 
