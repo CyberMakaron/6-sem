@@ -32,8 +32,9 @@ private slots:
     void showGameResult();
     void on_actionStart_triggered();
     void on_actionClear_triggered();
-    void on_actionRandom_triggered();
-
+    void on_actionRandom_triggered();    
+    void on_actionCreateGame_triggered();
+    void on_actionFindGame_triggered();
 
 private:
     Ui::MainWindow *ui;

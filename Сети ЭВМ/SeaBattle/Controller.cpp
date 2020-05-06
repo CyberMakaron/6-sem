@@ -5,7 +5,6 @@ Controller::Controller(Model* model_): model( model_ ){}
 Controller::~Controller(){}
 
 void Controller::onMousePressed(const QPoint& pos, bool setShip){
-    //qDebug() << model->getMyShipsNum();
     if(model->getStatus() == ST_PLACING_SHIPS){
         QPoint point = getMyFieldCoord(pos);
         if(point.x() == -1 || point.y() == -1)

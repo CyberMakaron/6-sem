@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -24,15 +24,23 @@
   </property>
   <property name="maximumSize">
    <size>
-    <width>890</width>
-    <height>470</height>
+    <width>1920</width>
+    <height>1080</height>
    </size>
   </property>
   <property name="windowTitle">
    <string>Sea Batle</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QVBoxLayout" name="verticalLayout"/>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="gameField">
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -48,6 +56,8 @@
      <string>Игра</string>
     </property>
     <addaction name="actionStart"/>
+    <addaction name="actionCreateGame"/>
+    <addaction name="actionFindGame"/>
    </widget>
    <widget class="QMenu" name="menu_2">
     <property name="title">
@@ -82,6 +92,16 @@
    </property>
    <property name="toolTip">
     <string>Начать игру</string>
+   </property>
+  </action>
+  <action name="actionCreateGame">
+   <property name="text">
+    <string>Создать игру</string>
+   </property>
+  </action>
+  <action name="actionFindGame">
+   <property name="text">
+    <string>Найти игру</string>
    </property>
   </action>
  </widget>

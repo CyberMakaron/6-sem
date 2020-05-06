@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
     img.load();
 
     model = new Model;
-    controller = new Controller(model);
+    controller = new Controller(model);  
     this->redraw();
 }
 
@@ -26,11 +26,13 @@ void MainWindow::setStatus(const QString& status){
 }
 
 void MainWindow::paintEvent(QPaintEvent* event){
-    const int y = this->centralWidget()->y();
-    QPainter painter(this);
-    painter.drawImage(0, y, img.get("field"));
-    painter.drawImage(MYFIELD_X, MYFIELD_Y + y, controller->myFieldImage(img));
-    painter.drawImage(ENEMYFIELD_X, ENEMYFIELD_Y + y, controller->enemyFieldImage(img));
+    QImage image(img.get("field"));
+    QPainter painter(&image);
+    painter.drawImage(MYFIELD_X, MYFIELD_Y, controller->myFieldImage(img));
+    painter.drawImage(ENEMYFIELD_X, ENEMYFIELD_Y, controller->enemyFieldImage(img));
+    ui->gameField->setGeometry(ui->gameField->x(), ui->gameField->y(), image.width(), image.height());
+    ui->gameField->setPixmap(QPixmap::fromImage(image));
+    resize(minimumSizeHint());
 
     if(controller->checkGameResult() == GR_NONE){
         switch(controller->getStatus()){
@@ -55,7 +57,8 @@ void MainWindow::paintEvent(QPaintEvent* event){
 
 void MainWindow::mousePressEvent(QMouseEvent* ev){
     QPoint pos = ev->pos();
-    pos.setY(pos.y() - this->centralWidget()->y());
+    pos.setY(pos.y() - (centralWidget()->y() + ui->gameField->y()));
+    pos.setX(pos.x() - (centralWidget()->x() + ui->gameField->x()));
     controller->onMousePressed(pos, ev->button() == Qt::LeftButton);
     if (controller->getStatus() == ST_WAITING_STEP){
         controller->doEnemyStep();
@@ -94,4 +97,12 @@ void MainWindow::showGameResult(){
 void MainWindow::on_actionRandom_triggered(){
     controller->randomMyField();
     this->update();
+}
+
+void MainWindow::on_actionCreateGame_triggered(){
+
+}
+
+void MainWindow::on_actionFindGame_triggered(){
+
 }
