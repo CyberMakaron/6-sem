@@ -18,7 +18,7 @@ void ADC_init(){
     P6SEL |= BIT1;          // выбор АЦП ADC1, к которому подключен датчик тока
 
     ADC12CTL1 = SHP + CSTARTADD_0; // таймер выборки и стартовый адрес преобразования - ADC12MEM0
-    ADC12CTL1 |= CONSEQ0 + SHS0;   // режим "последовательность каналов" и синхронизация по выходу 1 таймера А(источник для SHI)
+    ADC12CTL1 |= CONSEQ1 + CONSEQ0 + SHS0;   // режим "повторяющаяся последовательность каналов" и синхронизация по выходу 1 таймера А(источник для SHI)
     // выбор опорного напряжения - Vr+ = VеREF+ = 3.3В, Vr- = AVss = 0В
     //    и входного канала ADC0 для ячейки памяти ADC12MEM0
     ADC12MCTL0 = SREF_3 + INCH_0;
@@ -26,16 +26,16 @@ void ADC_init(){
     //    и входного канала ADC1 для ячейки памяти ADC12MEM1
     ADC12MCTL1 = SREF_3 + INCH_1 + EOS; // EOD - конец последовательности
 
-    ADC12IE = BIT0 + BIT1;  // разрешить прерывания
+    ADC12IE = BIT1;// + BIT0;  // разрешить прерывания
     ADC12CTL0 = ADC12ON;    // включение АЦП
     ADC12CTL0 |= ENC;       // преобразование разрешено
 }
 
 void Timer_A_init(){
-    TACTL = TASSEL0 + MC0; // 32768 Гц и режим вверх
     TACCR0 = 328;   // T = 10 мс
-    TACCR1 = TACCR0;
-    TACCTL1 |= OUTMOD0; //OUT1 в режим установить
+    TACCR1 = 250;
+    TACCTL1 = OUTMOD_3 + CCIE; //OUT1 в режим установить/сброс и разрешение прерывания от сравнения
+    TACTL = TASSEL0 + MC0; // 32768 Гц и режим вверх
 }
 
 float rh, curr;
@@ -44,6 +44,7 @@ void main(void) {
     __enable_interrupt();
     Init_System_Clock();
     Init_System();
+    ADC_init();
     Timer_A_init();
     LCD_init();
     LCD_set_cursor(0);
@@ -59,13 +60,24 @@ void main(void) {
     }
 }
 
+/*
+#pragma vector=TIMERA1_VECTOR
+__interrupt void isrTIMERA(void){
+  //if(TAIV == 0x02){
+      rh = HIH_get_hum();
+      curr = INA_get_curr();
+      TACCTL1 &= ~CCIFG;
+  //}
+}
+*/
 #pragma vector = ADC12_VECTOR
 __interrupt void ADC_interrupt(void){
-    if (ADC12IFG & BIT0 == 1){
+    ADC12CTL0 &= ~ENC;
+    //if (ADC12IFG & BIT0 == 1){
         rh = (((ADC12MEM0/4095.0) * HIH_ion * HIH_divisor) - HIH_zero_offset) / HIH_slope;
-    }
-    if (ADC12IFG & BIT1 == 1){
+    //}
+    //if (ADC12IFG & BIT1 == 1){
         curr = (ADC12MEM1*3.3) / (4095.0 * INA_RS * INA_RL);
-        TACCTL1 &= ~OUT;
-    }
+    //}
+    ADC12CTL0 |= ENC;       // преобразование разрешено
 }
