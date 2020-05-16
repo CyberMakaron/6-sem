@@ -26,7 +26,7 @@ void ADC_init(){
     //    и входного канала ADC1 для ячейки памяти ADC12MEM1
     ADC12MCTL1 = SREF_3 + INCH_1 + EOS; // EOD - конец последовательности
 
-    ADC12IE = BIT1;// + BIT0;  // разрешить прерывания
+    ADC12IE = BIT1;  // разрешить прерывания
     ADC12CTL0 = ADC12ON;    // включение АЦП
     ADC12CTL0 |= ENC;       // преобразование разрешено
 }
@@ -60,24 +60,10 @@ void main(void) {
     }
 }
 
-/*
-#pragma vector=TIMERA1_VECTOR
-__interrupt void isrTIMERA(void){
-  //if(TAIV == 0x02){
-      rh = HIH_get_hum();
-      curr = INA_get_curr();
-      TACCTL1 &= ~CCIFG;
-  //}
-}
-*/
 #pragma vector = ADC12_VECTOR
 __interrupt void ADC_interrupt(void){
     ADC12CTL0 &= ~ENC;
-    //if (ADC12IFG & BIT0 == 1){
         rh = (((ADC12MEM0/4095.0) * HIH_ion * HIH_divisor) - HIH_zero_offset) / HIH_slope;
-    //}
-    //if (ADC12IFG & BIT1 == 1){
         curr = (ADC12MEM1*3.3) / (4095.0 * INA_RS * INA_RL);
-    //}
     ADC12CTL0 |= ENC;       // преобразование разрешено
 }
