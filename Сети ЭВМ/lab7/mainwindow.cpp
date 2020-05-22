@@ -299,7 +299,10 @@ void MainWindow::showLetter(int num){
             QString tmp = QByteArray::fromBase64(mes.toUtf8());
             letters[num].setBody(tmp);
         }
-        else logPOP3 << "Неизвестная кодировка: " << content_transfer_encoding << "!" << endl;
+        else{
+            letters[num].setBody(mes);
+            logPOP3 << "Неизвестная кодировка: " << content_transfer_encoding << "!" << endl;
+        }
     }
     my_textBrowser->setHtml(letters[num].getLetterBody());
     ui->lineEdit_letterSender->setText(letters[num].getSenderName() + " " + letters[num].getSenderEmail());
