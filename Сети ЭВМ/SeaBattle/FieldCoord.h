@@ -8,5 +8,5 @@ const int ENEMYFIELD_Y = 54;
 const int FIELD_WIDTH = 322;
 const int FIELD_HEIGHT = 322;
 
-QPoint getMyFieldCoord( const QPoint& pos );
-QPoint getEnemyFieldCoord( const QPoint& pos );
+QPoint getMyFieldCoord(const QPoint& pos);
+QPoint getEnemyFieldCoord(const QPoint& pos);

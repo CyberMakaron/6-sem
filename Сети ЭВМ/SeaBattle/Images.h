@@ -10,6 +10,6 @@ private:
 public:
     Images();
     void load();
-    QImage& get( const QString& imgName );
+    QImage& get(const QString& imgName);
     bool isLoaded();
 };

@@ -5,38 +5,55 @@
 #include "FieldCoord.h"
 #include <QPainter>
 #include "Images.h"
+#include "netcontroller.h"
 
-enum GameResult {
-    GR_NONE = 0,
-    GR_WON = 1,
-    GR_LOST = -1
-};
+enum GameResult {GR_WON = 0, GR_LOST = -1};
 
-class Controller{
+class Controller: public QObject{
+    Q_OBJECT
 public:
     Controller(Model* model_);
     ~Controller();
     void onMousePressed(const QPoint& position, bool setShip = true);
-    void onGameStart();
-    void clearFields();
+    bool gameStart();
+    void clearMyField();
     void randomMyField();
-    void randomEnemyField();
     Status getStatus() const;
-    void setStatus(Status st);
-    void doEnemyStep();
     QImage myFieldImage(Images& img);
-    QImage enemyFieldImage(Images& img);
-    QImage getFieldImage(Images& img, bool atEnemyField);
-    GameResult checkGameResult();
-    void markMySunken(int x, int y);
-    void markEnemySunken(int x, int y);
+    QImage enemyFieldImage(Images& img);      
+    void createNetGame(QString name, QString password);
+    QVector<QPair<QString, QString>> searchLocalGames();
+    void connectToGame(QString name, QString password);
+    void placingShips();    
+    void closeGame(bool initiator);
 
 private:
+    QImage getFieldImage(Images& img, bool atEnemyField);
+    void markMySunken(int x, int y);
+    void markEnemySunken(int x, int y);
+    void shotFromOpponent(QString coord);
     void placeMyShipAtRandom(int size);
-    void placeEnemyShipAtRandom(int size);
+    void setEnemyField(QString field);
     void markShip(int x, int y, bool atEnemyField = true);
     void markMyPoint(int x, int y);
     void markEnemyPoint(int x, int y);
 
     Model* model;
+    NetController net;
+    bool I_creator;
+
+private slots:
+    void onNetError(QString err, uint code);
+    void onWrongPass();
+    void onConnectionSuccessful();
+    void onMessageFromOpponent(QString type, QString body);
+    void onOpponentConnected();
+
+signals:
+    void wrongPass();
+    void connectionSuccessful();
+    void opponentConnected();
+    void opponentReady();
+    void opponentDisconnected();
+    void gameResult(GameResult res);
 };

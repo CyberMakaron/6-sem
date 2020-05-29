@@ -1,7 +1,14 @@
 #include "Controller.h"
 #include <QDebug>
 
-Controller::Controller(Model* model_): model( model_ ){}
+Controller::Controller(Model* model_): model( model_ ), net(){
+    QObject::connect(&net, SIGNAL(netError(QString, uint)), this, SLOT(onNetError(QString, uint)));
+    QObject::connect(&net, SIGNAL(wrongPass()), this, SLOT(onWrongPass()));
+    QObject::connect(&net, SIGNAL(connectionSuccessful()), this, SLOT(onConnectionSuccessful()));
+    QObject::connect(&net, SIGNAL(messageFromOpponent(QString, QString)), this, SLOT(onMessageFromOpponent(QString, QString)));
+    QObject::connect(&net, SIGNAL(opponentConnected()), this, SLOT(onOpponentConnected()));
+    model->setStatus(ST_WAITINGGAME);
+}
 Controller::~Controller(){}
 
 void Controller::onMousePressed(const QPoint& pos, bool setShip){
@@ -15,36 +22,23 @@ void Controller::onMousePressed(const QPoint& pos, bool setShip){
 
     if(model->getStatus() == ST_MAKING_STEP){
         QPoint point = getEnemyFieldCoord(pos);
+        QString coord = QString::number(point.x()) + " " + QString::number(point.y());
         if(point.x() == -1 || point.y() == -1)
             return;
+        if(model->getEnemyCell(point.x(), point.y()) == CL_DOT ||
+                model->getEnemyCell(point.x(), point.y()) == CL_SUNKEN ||
+                model->getEnemyCell(point.x(), point.y()) == CL_HALF)
+            return;
+
+        net.sendShot(coord);
         if(model->getEnemyCell(point.x(), point.y()) == CL_SHIP){
             model->setEnemyCell(point.x(), point.y(), CL_HALF);
             markEnemySunken(point.x(), point.y());
             return;
         }
-        if(model->getEnemyCell(point.x(), point.y()) == CL_DOT ||
-                model->getEnemyCell(point.x(), point.y()) == CL_SUNKEN ||
-                model->getEnemyCell(point.x(), point.y()) == CL_HALF)
-            return;
         if(model->getEnemyCell(point.x(), point.y()) == CL_CLEAR)
             model->setEnemyCell(point.x(), point.y(), CL_DOT);
         model->setStatus(ST_WAITING_STEP);
-    }
-}
-
-void Controller::doEnemyStep(){
-    int x, y;
-    while (true){
-        x = qrand() % 10, y = qrand() % 10;
-        if(model->getMyCell(x, y) == CL_CLEAR){
-            model->setMyCell(x, y, CL_DOT);
-            break;
-        }
-        if(model->getMyCell(x, y) == CL_SHIP){
-            model->setMyCell(x, y, CL_HALF);
-            markMySunken(x, y);
-            break;
-        }
     }
 }
 
@@ -79,6 +73,35 @@ void Controller::markEnemyPoint(int x, int y){
         model->setEnemyCell(x, y, CL_DOT);
 }
 
+void Controller::onNetError(QString err, uint code){
+    qDebug() << "Net error with code" << code << ":" << err;
+}
+
+void Controller::onWrongPass(){
+    emit wrongPass();
+}
+
+void Controller::onConnectionSuccessful(){
+    emit connectionSuccessful();
+}
+
+void Controller::onMessageFromOpponent(QString type, QString body){
+    if (type == GAME_START){
+        setEnemyField(body);
+        emit opponentReady();
+    }
+    if (type == SHOT)
+        shotFromOpponent(body);
+    if (type == ENDGAME){
+        emit opponentDisconnected();
+        closeGame(false);
+    }
+}
+
+void Controller::onOpponentConnected(){
+    emit opponentConnected();
+}
+
 void Controller::markMySunken(int x, int y){
     int r, a, b, i;
     if (model->getMyCell(x, y - 1) == CL_HALF || model->getMyCell(x, y + 1) == CL_HALF||
@@ -105,6 +128,8 @@ void Controller::markMySunken(int x, int y){
             markShip(x, i, false);
         model->setMyShipsNum(model->getMyShipsNum() - 1);
     }
+    if (model->getMyShipsNum() == 0)
+        emit gameResult(GR_LOST);
 }
 
 void Controller::markEnemySunken(int x, int y){
@@ -133,24 +158,65 @@ void Controller::markEnemySunken(int x, int y){
             markShip(x, i, true);
         model->setEnemyShipsNum(model->getEnemyShipsNum() - 1);
     }
+    if (model->getEnemyShipsNum() == 0)
+        emit gameResult(GR_WON);
 }
 
+void Controller::createNetGame(QString name, QString password){
+    I_creator = true;
+    net.createGame(name, password);
+}
 
-void Controller::onGameStart(){
-    qDebug() << model->checkMyField();
+QVector<QPair<QString, QString>> Controller::searchLocalGames(){
+    return net.searchLocalGames();
+}
+
+void Controller::connectToGame(QString name, QString password){
+    I_creator = false;
+    net.connectToGame(name, password);
+}
+
+void Controller::placingShips(){
+    model->setStatus(ST_PLACING_SHIPS);
+}
+
+void Controller::shotFromOpponent(QString coord){
+    int x, y;
+    x = coord.split(" ").at(0).toInt();
+    y = coord.split(" ").at(1).toInt();
+    if(model->getMyCell(x, y) == CL_CLEAR){
+        model->setMyCell(x, y, CL_DOT);
+        model->setStatus(ST_MAKING_STEP);
+    }
+    if(model->getMyCell(x, y) == CL_SHIP){
+        model->setMyCell(x, y, CL_HALF);
+        markMySunken(x, y);
+    }
+}
+
+void Controller::closeGame(bool initiator){
+    model->clearEnemyField();
+    model->clearMyField();
+    net.closeGame(initiator);
+    model->setStatus(ST_WAITINGGAME);
+}
+
+bool Controller::gameStart(){
     if(!model->checkMyField())
-        return;
-    randomEnemyField();
+        return false;
+    QString field;
+    model->getMyFieldArray(field);
+    net.sendMyField(field);
     model->setMyShipsNum(10);
     model->setEnemyShipsNum(10);
-    model->setStatus(ST_MAKING_STEP);
+    if (I_creator) model->setStatus(ST_MAKING_STEP);
+        else model->setStatus(ST_WAITING_STEP);
+    return true;
 }
 
-void Controller::clearFields(){
-    if( model->getStatus() != ST_PLACING_SHIPS )
+void Controller::clearMyField(){
+    if(model->getStatus() != ST_PLACING_SHIPS)
         return;
-
-    model->clearEnemyField();
     model->clearMyField();
 }
 
@@ -189,47 +255,13 @@ void Controller::placeMyShipAtRandom(int size){
         model->setMyCell(r * k + !r * p, r * q + !r * k, CL_SHIP);
 }
 
-void Controller::randomEnemyField(){
-    if(model->getStatus() != ST_PLACING_SHIPS)
-        return;
-
-    model->clearEnemyField();
-
-    for(int i = 1, k = 4; i <= 4; i++, k--)
-        for(int j = 0; j < i; j++)
-            placeEnemyShipAtRandom(k);
-}
-
-void Controller::placeEnemyShipAtRandom(int size){
-    int p;
-    int q;
-    bool r;
-    bool isOk = true;
-
-    while(isOk)
-    {
-        p = qrand() % (10 - size + 1);
-        q = qrand() % (10 - size + 1);
-        r = qrand() % 2;
-
-        for(int k = r * p + !r * q - 1; k < (r * p + !r * q + size + 1); k++)
-            if(     model->getEnemyCell(r * k + !r * p, r * q + !r * k) == CL_SHIP ||
-                    model->getEnemyCell(r * k + !r * (p - 1), r * (q - 1) + !r * k) == CL_SHIP ||
-                    model->getEnemyCell(r * k + !r * (p + 1), r * (q + 1) + !r * k) == CL_SHIP)
-                isOk = false;
-        isOk = ! isOk;
-    }
-
-    for(int k = r * p + !r * q; k < (r * p + !r * q + size); k++)
-        model->setEnemyCell(r * k + !r * p, r * q + !r * k, CL_SHIP);
+void Controller::setEnemyField(QString field){
+    for (int i = 0; i < 100; i++)
+        model->setEnemyCell(i%10, i/10, (field[i] == "0") ? CL_CLEAR : CL_SHIP);
 }
 
 Status Controller::getStatus() const{
     return model->getStatus();
-}
-
-void Controller::setStatus(Status st){
-    model->setStatus(st);
 }
 
 QImage Controller::myFieldImage(Images& img){
@@ -281,12 +313,4 @@ QImage Controller::getFieldImage(Images& img, bool atEnemyField){
             }
         }
     return image;
-}
-
-GameResult Controller::checkGameResult(){
-    if (model->getMyShipsNum() == 0)
-        return GR_LOST;
-    if (model->getEnemyShipsNum() == 0)
-        return GR_WON;
-    return GR_NONE;
 }

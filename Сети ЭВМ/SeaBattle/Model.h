@@ -3,17 +3,16 @@
 #include <QObject>
 #include "Field.h"
 
-enum Status{ST_PLACING_SHIPS = 0, ST_WAITING_STEP, ST_MAKING_STEP};
+enum Status{ST_WAITINGGAME = 0, ST_PLACING_SHIPS, ST_WAITING_STEP, ST_MAKING_STEP};
 enum ShipDisplayMode{SDM_NONE = 0, SDM_HORIZONTAL = 1, SDM_VERTICAL = 2};
 
-class Model: public QObject
-{
+class Model: public QObject{
     Q_OBJECT
 public:
     Model();
     ~Model();
     Status getStatus() const;
-    void setStatus(Status);
+    void setStatus(Status status);
     Cell getMyCell(int x, int y) const;
     void setMyCell(int x, int y, Cell cell);
     Cell getEnemyCell(int x, int y) const;
@@ -28,6 +27,7 @@ public:
     int getEnemyShipsNum();
     void setMyShipsNum(int n);
     void setEnemyShipsNum(int n);
+    void getMyFieldArray(QString &field);
 
 private:
     Field* myField, *enemyField;

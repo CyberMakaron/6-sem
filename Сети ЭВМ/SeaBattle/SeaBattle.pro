@@ -1,4 +1,5 @@
 QT       += core gui
+LIBS += -lws2_32
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -17,8 +18,8 @@ SOURCES += \
         Model.cpp \
         main.cpp \
         mainwindow.cpp \
-        netdialog.cpp \
-        network.cpp
+        netcontroller.cpp \
+        netdialog.cpp
 
 HEADERS += \
         Controller.h \
@@ -27,8 +28,8 @@ HEADERS += \
         Images.h \
         Model.h \
         mainwindow.h \
-        netdialog.h \
-        network.h
+        netcontroller.h \
+        netdialog.h
 
 FORMS += \
         mainwindow.ui \

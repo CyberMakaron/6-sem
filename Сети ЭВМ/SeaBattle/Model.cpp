@@ -36,7 +36,6 @@ void Model::setStatus(Status st){
 }
 
 bool Model::checkMyField() const{
-    // проверка поля на корректность расстановки кораблей
     return (shipNum(1) == 4 && shipNum(2) == 3 && shipNum(3) == 2 && shipNum(4) == 1);
 }
 
@@ -53,35 +52,27 @@ int Model::shipNum(int size) const{
 bool Model::isShip(int size, int x, int y) const{
     if(x > 0 && myField->getCell(x - 1, y) != CL_CLEAR)
         return false;
-
     if(y > 0 && myField->getCell(x, y - 1) != CL_CLEAR)
         return false;
-
     if(myField->getCell(x, y) == CL_CLEAR)
         return false;
-
     int tmp = x;
     int num = 0;
-
     while(myField->getCell(tmp, y) != CL_CLEAR && tmp < 10){
         tmp++;
         num++;
     }
-
     if(num == size){
         if(myField->getCell(x, y + 1) != CL_CLEAR)
             return false;
         return true;
     }
-
     tmp = y;
     num = 0;
-
     while(myField->getCell(x, tmp) != CL_CLEAR && tmp < 10){
         tmp++;
         num++;
     }
-
     if(num == size){
         if(myField->getCell(x + 1, y) != CL_CLEAR)
             return false;
@@ -98,24 +89,19 @@ ShipDisplayMode Model::getDisplayMode(int &size, int x, int y, bool atEnemyField
         return SDM_NONE;
     if(field->getCell(x, y) == CL_CLEAR || field->getCell(x, y) == CL_DOT)
         return SDM_NONE;
-
     int tmp = x;
     int num = 0;
-
     while(field->getCell(tmp, y) != CL_CLEAR && field->getCell(tmp, y) != CL_DOT && tmp < 10){
         tmp++;
         num++;
     }
-
     size = num;
     tmp = y;
     num = 0;
-
     while(field->getCell(x, tmp) != CL_CLEAR && field->getCell(x, tmp) != CL_DOT && tmp < 10){
         tmp++;
         num++;
     }
-
     if(num > size){
         size = num;
         return SDM_VERTICAL;
@@ -145,4 +131,8 @@ void Model::setMyShipsNum(int n){
 
 void Model::setEnemyShipsNum(int n){
     enemyField->setNum(n);
+}
+
+void Model::getMyFieldArray(QString &field){
+    myField->getFieldArray(field);
 }
